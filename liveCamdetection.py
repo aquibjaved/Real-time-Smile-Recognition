@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 import glob,os
 import numpy as np
+import time
 
 detector = dlib.get_frontal_face_detector()
 PREDICTOR_PATH = "shape_predictor_68_face_landmarks.dat"  
@@ -16,23 +17,23 @@ b = tf.Variable(tf.zeros([2]), dtype = tf.float32,name="bias")
 saver = tf.train.Saver()
 
 def pre_process(img):
-	img1 = roi_mouth 			# Reading each images in grayscale
-	img1 = cv2.resize(img1,(img_width, img_height)) # Resizing all the images
-
-	image=[]
-	image.append(img1)
-	image_test = np.array(image)
-	test_image_flatten = image_test.reshape(image_test.shape[0],-1)
-	test_image_normalized = test_image_flatten/255.
+	img1 = cv2.resize(img,(img_width, img_height)) # Resizing all the images
+	image_test = np.array([img1])
+	test_image_normalized = image_test.reshape(image_test.shape[0],-1)/255.
 	return test_image_normalized
 
 cap = cv2.VideoCapture(0)
+
+print "Starting the session"
+
 with tf.Session() as sess:
 	saver.restore(sess, "./model/emotion_model")
 	print("w1:", sess.run(W))
 	print("bias:", sess.run(b))
-
+	# print "time taken to load the model: ", (time.time() - start_time)
 	while True:
+		start_time = time.time()
+
 		_,img_orig = cap.read()
 		img = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
 		face = detector(img)
@@ -49,10 +50,9 @@ with tf.Session() as sess:
 
 	   		for idx, point in enumerate(landmarks_display):
 	   			pos = (point[0, 0], point[0, 1])  
-	   			# cv2.circle(img, pos, 2, color=(0, 0, 255), thickness=-1)  
 	   			(x, y, w, h) = cv2.boundingRect(np.array([(landmarks_display)]))
-	   			cv2.rectangle(img_orig,(x-8,y-10),(x+w+10,y+h+5),(0,255,0),2)
-	   			roi_mouth = img[y:y+h,x:x+w]
+	   			# cv2.rectangle(img_orig,(x-8,y-10),(x+w+10,y+h+5),(0,255,0),2)
+	   			roi_mouth = img[y:y-10+h+5,x:x-8+w+10]
 	   			#cv2.imshow("mouth",roi_mouth)
 
 	   			#prediction 
@@ -65,9 +65,10 @@ with tf.Session() as sess:
 					print "smile"
 				elif indx==0:
 					print "neutral"
+					
+		print "time taken to detect face from dlib: ", (time.time() - start_time)
 
 		cv2.imshow("Landmarks found", img_orig) 
-	  	# cv2.waitKey(0)
 	  	if cv2.waitKey(10) & 0xFF == ord('q'):
 	  		cap.release()
 	  		cv2.destroyAllWindows()
